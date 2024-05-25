@@ -34,9 +34,13 @@
 # Tokenization is the process of splitting text into individual words or tokens. This is an essential step in text
 # processing as it allows us to analyze the text more effectively.
 
+# all libraries and packages.
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 import string
+import spacy
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
 
 
 # word_tokenize is a function from NLTK that splits text into words.
@@ -69,7 +73,6 @@ def response_system(input_text):
         "hello": "Hi! there how can i help you today?",
         "how are you": "I am chat-bot I am always good!",
         "good morning": "Good Morning dear how can i help you today?",
-        "bye Goodbye": "Bye dear see you soon!",
         "what is your name": "I am a chat-bot created to assits you!"
     }
     tokens = tokenization(input_text)
@@ -80,8 +83,75 @@ def response_system(input_text):
     return recog_message if recog_message is not None else "I am sorry I dont understand !"
 
 
-result = response_system("what is your name")
-print(result)
+# result = response_system("what is your name")
+# print(result)
 
-# The above function or part was the Simple rule based system,next we will build the Machine learning response system
+
+# The above function  was the Simple rule based system,next we will build the Machine learning response system
 # below.
+
+# step 4-: Advanced NLP and spaCy function to define NER(named entity recognition) which is technique used to
+# identify named entity in text like name of people, places ect. for that import spaCy adn load the spacy model.
+def named_entity_recognition(text):
+    nlp = spacy.load('en_core_web_sm')  # loads the small english model from spacy
+    doc = nlp(text)
+    entities = [(entity.text, entity.label_) for entity in doc.ents]
+    return entities
+
+
+# nlp(text) processes the text using spaCy's model.
+# doc.ents contains the recognized entities in the text.
+# The function returns a list of tuples, each containing the entity text and its label (e.g., "India",
+# "GPE" for geopolitical entity).
+
+# print(named_entity_recognition("Tell me about New York"))
+
+# Step 5-: Machine Learning for Responses
+# function to train the model to generate the response , and using ml allows for more flexibility and adaptability.
+# firstly import required libraries sklearn.
+
+def get_ml_response(user_input):
+    training_data = [
+        ("Hello hii", "Hi there! How can I help you?"),
+        ("How are you", "I'm a chatbot, so I'm always good. How about you?"),
+        ("What is your name", "I'm a chatbot created to assist you."),
+        ("movie movies", "sorry i dont like movies so i cant answer regarding that"),
+        ("pokemon", "Pokemon is a animated cartoon !"),
+    ]
+    #     vectorize training data
+    training_text, training_response = zip(*training_data)  # separates the user inputs and responses.
+    vectorizer = TfidfVectorizer()
+    x_train = vectorizer.fit_transform(training_text)  # converts the user inputs to TF-IDF features.
+
+    #     train the model-:
+    model = MultinomialNB()
+    model.fit(x_train,
+              training_response)  # The model is trained using the TF-IDF features and the corresponding responses.
+
+    # to get the response-:
+    x_test = vectorizer.transform([user_input])  # converts the user input to TF-IDF features.
+    prediction = model.predict(x_test)  # predicts the response based on the input features
+    return prediction[0]
+
+
+# print(get_ml_response("do you like toy story 2 movie"))
+
+# step 6-: Integrate all functions-:
+# combine rule based and ml resposnes
+def chatbot_response(user_input):
+    response = response_system(user_input)
+    if response == "I am sorry I dont understand !":
+        response = get_ml_response(user_input)
+    return response
+
+
+# The function first tries to get a rule-based response.
+# If the rule-based response is not satisfactory, it uses the machine learning model to generate a response.
+
+if __name__ == "__main__":
+    while True:
+        user_input = input("YOU: ")
+        if user_input.lower() in ["bye", "quit", "exit", "goodbye"]:
+            print("chatbot:Goodbye! have a great day!")
+            break
+        print("Chatbot: ", chatbot_response(user_input))
